@@ -1,5 +1,7 @@
 build/*
 .venv/*
+.vscode/*
+.cache/*
 
 scripts/runs/*
-scripts/models/*.pt
+scripts/models/*

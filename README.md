@@ -51,3 +51,31 @@ cd ./scripts
 # yolo11n (остальные по аналогии с предыдущим пунктом)
 python3 yolo_eval.py export_to_onnx 11 n
 ```
+
+## Конвертация в engine
+```
+./to_engine.sh {path_to_trtexec} {path_to_onnx_model}
+```
+Модель в формате engine будет создана в директории onnx модели.
+
+## Замер скорости инференса:
+### Сборка исполняемых файлов для инференса
+Для `TensorRT` предлагается совместимость с JetPack 4.6, поэтмоу при конфигурации можно указать `-DJETSON=ON`, иначе сборка будет происходить под  TensorRTv10.
+
+Также при сборке на ПК необходимо указать пути до include(`-DTENSORRT_INCLUDE_DIR={path}`), lib(`-DTENSORRT_LIB_DIR={path}`) директорий библиотеки TensorRT, на Jetson данные библиотеки лежат в системных путях (при корректной установке JetPack).
+```
+mkdir build &&
+cd build && 
+cmake ../native -DBUILD_TEST_PROGRAM=ON
+make -j6
+```
+### OpenCV_DNN:
+```
+{path_to_measure_onnx} --image={path_to_img} --model={path_to_onnx_model} --times={amount_of_measures}
+```
+### TensorRT: 
+```
+{path_to_measure_onnx} --image={path_to_img} --model={path_to_engine_model} --times={amount_of_measures}
+```
+По окончании выполнения в директории запуска будет представлен файл c названием запускаемого детектора и форматом csv с результатами каждого этапа пайплайна детектирования.
+

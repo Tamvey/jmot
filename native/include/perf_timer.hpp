@@ -26,7 +26,7 @@ public:
       return;
     auto spent =
         std::chrono::high_resolution_clock::now() - tps.find(fname)->second;
-    out_ << std::chrono::duration_cast<std::chrono::milliseconds>(spent).count()
+    out_ << std::chrono::duration_cast<std::chrono::microseconds>(spent).count()
          << postfix;
   }
 

@@ -24,7 +24,7 @@ public:
 private:
   std::unique_ptr<TensorRTBase> tensorrt_base_;
   std::shared_ptr<Logger> logger_;
-  perf_timer pt;
+  perf_timer pt_;
 };
 
 } // namespace detection

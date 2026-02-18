@@ -79,6 +79,7 @@ private:
 
   cv::dnn::Net net;
 
+public:
   perf_timer pt_;
 };
 

@@ -1,6 +1,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <unordered_map>
 
 class perf_timer {
 public:
@@ -11,15 +12,27 @@ public:
 
   void set_table_name(const std::string &table_name) { out_ << table_name; }
 
-  void start() { last_ = std::chrono::high_resolution_clock::now(); }
+  void start(const std::string &fname) {
+    auto now = std::chrono::high_resolution_clock::now();
+    if (tps.find(fname) != tps.end()) {
+      tps[fname] = now;
+    } else {
+      tps.insert({fname, now});
+    }
+  }
 
-  void stop(const std::string &postfix) {
-    auto spent = std::chrono::high_resolution_clock::now() - last_;
+  void stop(const std::string &fname, const std::string &postfix) {
+    if (tps.find(fname) == tps.end())
+      return;
+    auto spent =
+        std::chrono::high_resolution_clock::now() - tps.find(fname)->second;
     out_ << std::chrono::duration_cast<std::chrono::milliseconds>(spent).count()
          << postfix;
   }
 
 private:
-  std::chrono::high_resolution_clock::time_point last_;
   std::ofstream out_;
+  std::unordered_map<std::string,
+                     std::chrono::high_resolution_clock::time_point>
+      tps;
 };

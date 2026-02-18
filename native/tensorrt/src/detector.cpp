@@ -12,8 +12,8 @@ using namespace detection;
 
 Detector::Detector(const std::string &engine_path,
                    const std::string &file_class)
-    : pt(engine_path) {
-  pt.set_table_name("pre-processing,inference,post-processing\n");
+    : pt_(engine_path) {
+  pt_.set_table_name("pre-processing,inference,post-processing\n");
 #if TRT == 10
   tensorrt_base_ = std::make_unique<TensorRTv10Engine>(engine_path);
 #else
@@ -69,7 +69,7 @@ Detector::detect(const cv::Mat &image, float confThreshold,
   std::unique_ptr<float[]> blobPtr;
 
   // input tensor
-  pt.start();
+  pt_.start("detect");
   auto input_tensor = tensorrt_base_->input_[0];
   std::vector<int64_t> input_shape = {1, 3, input_tensor.dims_.d[3],
                                       input_tensor.dims_.d[2]};
@@ -77,21 +77,21 @@ Detector::detect(const cv::Mat &image, float confThreshold,
   cv::Mat letterbox_img = preprocess(image, blobPtr, input_shape);
   memcpy(tensorrt_base_->host_input_buffers_[0].data(), blobPtr.get(),
          input_tensor.get_volume());
-  pt.stop(",");
+  pt_.stop("detect", ",");
 
   if (tensorrt_base_->copy_all_inputs_to_device()) {
     logger_->log(Logger::Severity::kERROR, "H2D failed");
     return {};
   }
 
-  pt.start();
+  pt_.start("detect");
   if (tensorrt_base_->inference()) {
     logger_->log(Logger::Severity::kERROR, "Inference failed");
     return {};
   }
-  pt.stop(",");
+  pt_.stop("detect", ",");
 
-  pt.start();
+  pt_.start("detect");
   if (tensorrt_base_->copy_all_outputs_to_host()) {
     logger_->log(Logger::Severity::kERROR, "D2H failed");
     return {};
@@ -102,7 +102,7 @@ Detector::detect(const cv::Mat &image, float confThreshold,
   auto result = postprocess(image.size(), letterboxSize,
                             tensorrt_base_->host_output_buffers_, confThreshold,
                             iouThreshold);
-  pt.stop("\n");
+  pt_.stop("detect", "\n");
   return result;
 }
 

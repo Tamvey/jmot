@@ -14,7 +14,7 @@ Inference::Inference(const std::string &onnxModelPath,
 }
 
 std::vector<Detection> Inference::runInference(const cv::Mat &input) {
-  pt_.start();
+  pt_.start("runInference");
   cv::Mat modelInput = input;
   int pad_x, pad_y;
   float scale;
@@ -25,14 +25,14 @@ std::vector<Detection> Inference::runInference(const cv::Mat &input) {
   cv::dnn::blobFromImage(modelInput, blob, 1.0 / 255.0, modelShape,
                          cv::Scalar(), true, false);
   net.setInput(blob);
-  pt_.stop(",");
+  pt_.stop("runInference", ",");
 
-  pt_.start();
+  pt_.start("runInference");
   std::vector<cv::Mat> outputs;
   net.forward(outputs, net.getUnconnectedOutLayersNames());
-  pt_.stop(",");
+  pt_.stop("runInference", ",");
 
-  pt_.start();
+  pt_.start("runInference");
   int rows = outputs[0].size[1];
   int dimensions = outputs[0].size[2];
 
@@ -141,7 +141,7 @@ std::vector<Detection> Inference::runInference(const cv::Mat &input) {
 
     detections.push_back(result);
   }
-  pt_.stop("\n");
+  pt_.stop("runInference", "\n");
 
   return detections;
 }

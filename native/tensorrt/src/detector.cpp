@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <opencv4/opencv2/opencv.hpp>
@@ -37,7 +38,7 @@ Detector::Detector(const std::string &engine_path,
 }
 
 cv::Mat Detector::preprocess(const cv::Mat &image,
-                             std::unique_ptr<float[]> &blobPtr,
+                             std::vector<uint8_t> &blobPtr,
                              std::vector<int64_t> &inputTensorShape) noexcept {
   cv::Mat letterboxImage;
 
@@ -51,11 +52,11 @@ cv::Mat Detector::preprocess(const cv::Mat &image,
   letterboxImage.convertTo(letterboxImage, CV_32FC3, 1.0f / 255.0f);
   size_t size = static_cast<size_t>(letterboxImage.rows) *
                 static_cast<size_t>(letterboxImage.cols) * 3;
-  blobPtr.reset(new float[size]);
+  blobPtr.resize(size * 4);
   std::vector<cv::Mat> channels(3);
   for (int c = 0; c < 3; ++c) {
     channels[c] = cv::Mat(letterboxImage.rows, letterboxImage.cols, CV_32FC1,
-                          blobPtr.get() +
+                          blobPtr.data() +
                               c * (letterboxImage.rows * letterboxImage.cols));
   }
   cv::split(letterboxImage, channels);
@@ -74,9 +75,8 @@ Detector::detect(const cv::Mat &image, float confThreshold,
   std::vector<int64_t> input_shape = {1, 3, input_tensor.dims_.d[3],
                                       input_tensor.dims_.d[2]};
 
-  cv::Mat letterbox_img = preprocess(image, blobPtr, input_shape);
-  memcpy(tensorrt_base_->host_input_buffers_[0].data(), blobPtr.get(),
-         input_tensor.get_volume());
+  cv::Mat letterbox_img =
+      preprocess(image, tensorrt_base_->host_input_buffers_[0], input_shape);
   pt_.stop("detect", ",");
 
   if (tensorrt_base_->copy_all_inputs_to_device()) {

@@ -14,7 +14,7 @@ public:
 
   std::vector<Detection> detect(const cv::Mat &image, float confThreshold,
                                 float iouThreshold) noexcept;
-  cv::Mat preprocess(const cv::Mat &image, std::unique_ptr<float[]> &blobPtr,
+  cv::Mat preprocess(const cv::Mat &image, std::vector<uint8_t> &blobPtr,
                      std::vector<int64_t> &inputTensorShape) noexcept;
   std::vector<Detection>
   postprocess(const cv::Size &origSize, const cv::Size &letterboxSize,

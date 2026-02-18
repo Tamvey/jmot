@@ -70,5 +70,5 @@ if (BUILD_TEST_PROGRAM)
 endif()
 
 if(REFLECT)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE REFLECT=ON)
+    target_compile_definitions(test PRIVATE REFLECT=ON)
 endif()

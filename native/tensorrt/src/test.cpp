@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
 
       std::vector<detection::Detection> output =
           detector.detect(frame, 0.25, 0.45);
-
+#ifdef REFLECT
       int detections = output.size();
 
       for (int i = 0; i < detections; ++i) {
@@ -62,11 +62,12 @@ int main(int argc, char **argv) {
                     cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
       }
 
-      //   float scale = 0.2;
-      //   cv::resize(frame, frame,
-      //              cv::Size(frame.cols * scale, frame.rows * scale));
-      //   cv::imshow("Inference", frame);
-      //   cv::waitKey(-1);
+      float scale = 0.2;
+      cv::resize(frame, frame,
+                 cv::Size(frame.cols * scale, frame.rows * scale));
+      cv::imshow("Inference", frame);
+      cv::waitKey(-1);
+#endif
     }
   }
 }

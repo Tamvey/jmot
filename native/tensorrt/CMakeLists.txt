@@ -68,3 +68,7 @@ if (BUILD_TEST_PROGRAM)
   add_executable(test ${CMAKE_CURRENT_LIST_DIR}/src/test.cpp)
   target_link_libraries(test PRIVATE ${PROJECT_NAME})
 endif()
+
+if(REFLECT)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE REFLECT=ON)
+endif()

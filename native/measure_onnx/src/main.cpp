@@ -12,14 +12,15 @@ using namespace cv;
 int main(int argc, char **argv) {
   cxxopts::Options options("measure_onnx",
                            "measure speed of yolo models with onnx runtime");
-  options.add_options()("i,image", "Image path",
-                        cxxopts::value<std::string>()->default_value(
-                            "/home/matvey/projects/jmot/bus.jpg"))(
+  options.add_options()(
+      "i,image", "Image path",
+      cxxopts::value<std::string>()->default_value(
+          "/home/matvey/projects/jmot/urban-landscape-japan-lifestyle.jpg"))(
       "m,model", "Model path",
       cxxopts::value<std::string>()->default_value(
-          "/home/matvey/projects/jmot/scripts/models/yolo_nas_s.onnx"))(
+          "/home/matvey/projects/jmot/scripts/models/yolov8m.onnx"))(
       "t,times", "Amount of measures",
-      cxxopts::value<int>()->default_value("10"));
+      cxxopts::value<int>()->default_value("1"));
 
   auto result = options.parse(argc, argv);
 
@@ -39,7 +40,7 @@ int main(int argc, char **argv) {
       std::vector<Detection> output = inf.runInference(frame);
 
       int detections = output.size();
-
+#ifdef REFLECT
       for (int i = 0; i < detections; ++i) {
         Detection detection = output[i];
 
@@ -63,10 +64,12 @@ int main(int argc, char **argv) {
                     cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
       }
 
-      // float scale = 0.8;
-      // cv::resize(frame, frame, cv::Size(frame.cols*scale, frame.rows*scale));
-      // cv::imshow("Inference", frame);
-      // cv::waitKey(-1);
+      float scale = 0.8;
+      cv::resize(frame, frame,
+                 cv::Size(frame.cols * scale, frame.rows * scale));
+      cv::imshow("Inference", frame);
+      cv::waitKey(-1);
+#endif
     }
   }
 }

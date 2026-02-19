@@ -55,7 +55,7 @@ endif()
 # build library
 add_library(${PROJECT_NAME} SHARED ${PROJECT_SOURCES})
 target_link_directories(${PROJECT_NAME} PRIVATE ${TENSORRT_LIB_DIR})
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} cudart nvinfer)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} cudart nvinfer)
 
 # set definitions
 if(JETSON)

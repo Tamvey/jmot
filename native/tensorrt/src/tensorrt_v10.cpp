@@ -17,7 +17,8 @@ StatusCode TensorRTv10Engine::parse_tensors() noexcept {
 
     auto tensor = IOTensor(engine_->getTensorShape(name.c_str()), name, index);
 
-    if (name.find("output") != std::string::npos) {
+    if (name.find("output") != std::string::npos ||
+        name.find("1938") != std::string::npos) {
       output_.push_back(std::move(tensor));
     } else {
       input_.push_back(std::move(tensor));

@@ -5,6 +5,7 @@
 
 #include "structs.hpp"
 
+namespace detection {
 namespace utils {
 
 std::vector<std::string> getClassNames(const std::string &path);
@@ -27,4 +28,8 @@ void letterBox(const cv::Mat &image, cv::Mat &outImage,
                const cv::Scalar &color = cv::Scalar(114, 114, 114),
                bool auto_ = true, bool scaleFill = false, bool scaleUp = true,
                int stride = 32);
+
+std::vector<cv::Rect> slice_image(cv::Size image_size,
+                                  detection::SAHIParams params);
 } // namespace utils
+} // namespace detection

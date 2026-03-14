@@ -1,7 +1,6 @@
 #pragma once
 #include <memory>
 
-#include "opencv2/opencv.hpp"
 #include "perf_timer.hpp"
 #include "structs.hpp"
 #include "tensorrt_base.hpp"
@@ -12,14 +11,18 @@ class Detector {
 public:
   Detector(const std::string &engine_path, const std::string &file_class);
 
-  std::vector<Detection> detect(const cv::Mat &image, float confThreshold,
-                                float iouThreshold) noexcept;
-  cv::Mat preprocess(const cv::Mat &image, std::vector<uint8_t> &blobPtr,
-                     std::vector<int64_t> &inputTensorShape) noexcept;
+  std::vector<Detection> detect(const cv::Mat &image, bool useSahi,
+                                float confThreshold, float iouThreshold,
+                                SAHIParams params = SAHIParams(640, 640, 0.2,
+                                                               0.2)) noexcept;
+  void preprocess(const cv::Mat &image, std::vector<uint8_t> &host_input_buffer,
+                  IOTensor &inputTensorShape,
+                  const std::vector<cv::Rect> &image_slices) noexcept;
   std::vector<Detection>
   postprocess(const cv::Size &origSize, const cv::Size &letterboxSize,
               const std::vector<std::vector<uint8_t>> &outputs,
-              float confThreshold, float iouThreshold) noexcept;
+              const std::vector<cv::Rect> &image_slices, float confThreshold,
+              float iouThreshold) noexcept;
 
 private:
   std::unique_ptr<TensorRTBase> tensorrt_base_;

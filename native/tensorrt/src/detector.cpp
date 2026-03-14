@@ -39,46 +39,66 @@ Detector::Detector(const std::string &engine_path,
   tensorrt_base_->set_buffers();
 }
 
-cv::Mat Detector::preprocess(const cv::Mat &image,
-                             std::vector<uint8_t> &blobPtr,
-                             std::vector<int64_t> &inputTensorShape) noexcept {
-  cv::Mat letterboxImage;
+void Detector::preprocess(const cv::Mat &image,
+                          std::vector<uint8_t> &host_input_buffer,
+                          IOTensor &inputTensorShape,
+                          const std::vector<cv::Rect> &image_slices) noexcept {
+  // prepare buffer for batch size inputTensorShape[0]
+  size_t size = inputTensorShape.get_volume();
+  host_input_buffer.resize(size);
 
-  cv::Size detector_input(inputTensorShape[2], inputTensorShape[3]);
+  cv::Size detector_input(inputTensorShape.dims_.d[2],
+                          inputTensorShape.dims_.d[3]);
 
-  utils::letterBox(image, letterboxImage, detector_input,
-                   cv::Scalar(114, 114, 114),
-                   /*auto_=*/false,
-                   /*scaleFill=*/false, /*scaleUp=*/true, /*stride=*/32);
+  // fulfill all batch
+  for (auto ptr_i = 0; ptr_i < inputTensorShape.dims_.d[0]; ptr_i++) {
 
-  letterboxImage.convertTo(letterboxImage, CV_32FC3, 1.0f / 255.0f);
-  size_t size = static_cast<size_t>(letterboxImage.rows) *
-                static_cast<size_t>(letterboxImage.cols) * 3;
-  blobPtr.resize(size * 4);
-  std::vector<cv::Mat> channels(3);
-  for (int c = 0; c < 3; ++c) {
-    channels[c] = cv::Mat(letterboxImage.rows, letterboxImage.cols, CV_32FC1,
-                          blobPtr.data() +
-                              c * (letterboxImage.rows * letterboxImage.cols));
+    // stop if slices more than place in batch
+    if (image_slices.size() == ptr_i)
+      break;
+
+    cv::Mat letterboxImage;
+    std::vector<cv::Mat> channels(3);
+
+    detection::utils::letterBox(image(image_slices[ptr_i]), letterboxImage,
+                                detector_input, cv::Scalar(114, 114, 114),
+                                /*auto_=*/false,
+                                /*scaleFill=*/false, /*scaleUp=*/true,
+                                /*stride=*/32);
+
+    letterboxImage.convertTo(letterboxImage, CV_32FC3, 1.0f / 255.0f);
+
+    for (int c = 0; c < 3; ++c) {
+      auto offset_from_batch =
+          ptr_i * (letterboxImage.rows * letterboxImage.cols) * 3 * 4;
+      channels[c] =
+          cv::Mat(letterboxImage.rows, letterboxImage.cols, CV_32FC1,
+                  host_input_buffer.data() + offset_from_batch +
+                      c * (letterboxImage.rows * letterboxImage.cols) * 4);
+    }
+    cv::split(letterboxImage, channels);
   }
-  cv::split(letterboxImage, channels);
-
-  return letterboxImage;
 }
 
 std::vector<detection::Detection>
-Detector::detect(const cv::Mat &image, float confThreshold,
-                 float iouThreshold) noexcept {
-  std::unique_ptr<float[]> blobPtr;
-
+Detector::detect(const cv::Mat &image, bool useSahi, float confThreshold,
+                 float iouThreshold, SAHIParams params) noexcept {
   // input tensor
   pt_.start("detect");
-  auto input_tensor = tensorrt_base_->input_[0];
-  std::vector<int64_t> input_shape = {1, 3, input_tensor.dims_.d[3],
-                                      input_tensor.dims_.d[2]};
 
-  cv::Mat letterbox_img =
-      preprocess(image, tensorrt_base_->host_input_buffers_[0], input_shape);
+  auto input_tensor = tensorrt_base_->input_[0];
+  std::vector<cv::Rect> image_slices;
+
+  if (useSahi)
+    image_slices = detection::utils::slice_image(image.size(), params);
+  else
+    image_slices = detection::utils::slice_image(
+        image.size(),
+        SAHIParams(image.size().height, image.size().width, 0, 0));
+
+  preprocess(image, tensorrt_base_->host_input_buffers_[0], input_tensor,
+             image_slices);
+
   pt_.stop("detect", ",");
 
   if (tensorrt_base_->copy_all_inputs_to_device()) {
@@ -102,8 +122,8 @@ Detector::detect(const cv::Mat &image, float confThreshold,
                          static_cast<int>(input_tensor.dims_.d[2]));
 
   auto result = postprocess(image.size(), letterboxSize,
-                            tensorrt_base_->host_output_buffers_, confThreshold,
-                            iouThreshold);
+                            tensorrt_base_->host_output_buffers_, image_slices,
+                            confThreshold, iouThreshold);
   pt_.stop("detect", "\n");
   return result;
 }
@@ -111,13 +131,15 @@ Detector::detect(const cv::Mat &image, float confThreshold,
 std::vector<detection::Detection>
 Detector::postprocess(const cv::Size &origSize, const cv::Size &letterboxSize,
                       const std::vector<std::vector<uint8_t>> &outputs,
+                      const std::vector<cv::Rect> &image_slices,
                       float confThreshold, float iouThreshold) noexcept {
   std::vector<detection::Detection> results;
 
   bool yolov8 = false;
   if (outputs.size() == 1)
     yolov8 = true;
-  // Extract outputs
+
+  // extract outputs
   const float *output0_ptr;
   const float *output1_ptr;
   if (yolov8) {
@@ -127,7 +149,7 @@ Detector::postprocess(const cv::Size &origSize, const cv::Size &letterboxSize,
     output1_ptr = reinterpret_cast<const float *>(outputs[1].data());
   }
 
-  // Get shapes
+  // get shapes
 #ifdef TRT
 
 #if TRT == 10
@@ -152,110 +174,159 @@ Detector::postprocess(const cv::Size &origSize, const cv::Size &letterboxSize,
     num_features = shape0[2] + dims1.d[2];
     num_detections = shape0[1];
   }
-  // Early exit if no detections
+
   if (num_detections == 0) {
     return results;
   }
 
   const int numClasses =
-      static_cast<int>(num_features - 4); // Corrected number of classes
+      static_cast<int>(num_features - 4); // corrected number of classes
 
-  // Validate numClasses
+  // validate numClasses
   if (numClasses <= 0) {
     throw std::runtime_error("Invalid number of classes.");
   }
 
   const int numBoxes = static_cast<int>(num_detections);
 
-  // Constants from model architecture
+  // constants from model architecture
   constexpr int BOX_OFFSET = 0;
   int CLASS_CONF_OFFSET = 0;
   if (yolov8)
     CLASS_CONF_OFFSET = 4;
-  // 1. Process detections
-  std::vector<detection::BoundingBox> boxes;
-  boxes.reserve(numBoxes);
-  std::vector<float> confidences;
-  confidences.reserve(numBoxes);
-  std::vector<int> classIds;
-  classIds.reserve(numBoxes);
-  std::vector<std::vector<float>> maskCoefficientsList;
-  maskCoefficientsList.reserve(numBoxes);
 
-  for (int i = 0; i < numBoxes; ++i) {
-    // Extract box coordinates
-    float xc, yc, w, h;
-    if (yolov8) {
-      xc = output0_ptr[BOX_OFFSET * numBoxes + i];
-      yc = output0_ptr[(BOX_OFFSET + 1) * numBoxes + i];
-      w = output0_ptr[(BOX_OFFSET + 2) * numBoxes + i];
-      h = output0_ptr[(BOX_OFFSET + 3) * numBoxes + i];
-    } else {
-      xc = output0_ptr[i * 4];
-      yc = output0_ptr[i * 4 + 1];
-      w = output0_ptr[i * 4 + 2];
-      h = output0_ptr[i * 4 + 3];
-    }
+  // process batch
+  for (int ptr_i = 0; ptr_i < shape0[0]; ptr_i++) {
+    std::vector<detection::BoundingBox> boxes;
+    boxes.reserve(numBoxes);
 
-    // Convert to xyxy format
-    detection::BoundingBox box;
-    if (yolov8) {
-      box = {static_cast<int>(std::round(xc - w / 2.0f)),
-             static_cast<int>(std::round(yc - h / 2.0f)),
-             static_cast<int>(std::round(w)), static_cast<int>(std::round(h))};
-    } else {
-      box = {static_cast<int>(std::round(xc)), static_cast<int>(std::round(yc)),
-             static_cast<int>(std::round(w - xc)),
-             static_cast<int>(std::round(h - yc))};
-    }
+    std::vector<float> confidences;
+    confidences.reserve(numBoxes);
 
-    // Get class confidence
-    float maxConf = 0.0f;
-    int classId = -1;
-    for (int c = 0; c < numClasses; ++c) {
-      float conf = yolov8 ? output0_ptr[(CLASS_CONF_OFFSET + c) * numBoxes + i]
-                          : output1_ptr[i * numClasses + c];
-      if (conf > maxConf) {
-        maxConf = conf;
-        classId = c;
+    std::vector<int> classIds;
+    classIds.reserve(numBoxes);
+
+    std::vector<std::vector<float>> maskCoefficientsList;
+    maskCoefficientsList.reserve(numBoxes);
+
+    int offset = ptr_i * shape0[1] * shape0[2];
+
+    for (int i = 0; i < numBoxes; ++i) {
+      // extract box coordinates
+      float xc, yc, w, h;
+      if (yolov8) {
+        xc = output0_ptr[offset + BOX_OFFSET * numBoxes + i];
+        yc = output0_ptr[offset + (BOX_OFFSET + 1) * numBoxes + i];
+        w = output0_ptr[offset + (BOX_OFFSET + 2) * numBoxes + i];
+        h = output0_ptr[offset + (BOX_OFFSET + 3) * numBoxes + i];
+      } else {
+        xc = output0_ptr[i * 4];
+        yc = output0_ptr[i * 4 + 1];
+        w = output0_ptr[i * 4 + 2];
+        h = output0_ptr[i * 4 + 3];
       }
+
+      // convert to xyxy format
+      detection::BoundingBox box;
+      if (yolov8) {
+        box = {static_cast<int>(std::round(xc - w / 2.0f)),
+               static_cast<int>(std::round(yc - h / 2.0f)),
+               static_cast<int>(std::round(w)),
+               static_cast<int>(std::round(h))};
+      } else {
+        box = {static_cast<int>(std::round(xc)),
+               static_cast<int>(std::round(yc)),
+               static_cast<int>(std::round(w - xc)),
+               static_cast<int>(std::round(h - yc))};
+      }
+
+      // get class confidence
+      float maxConf = 0.0f;
+      int classId = -1;
+      for (int c = 0; c < numClasses; ++c) {
+        float conf =
+            yolov8
+                ? output0_ptr[offset + (CLASS_CONF_OFFSET + c) * numBoxes + i]
+                : output1_ptr[i * numClasses + c];
+        if (conf > maxConf) {
+          maxConf = conf;
+          classId = c;
+        }
+      }
+
+      if (maxConf < confThreshold)
+        continue;
+
+      boxes.push_back(box);
+      confidences.push_back(maxConf);
+      classIds.push_back(classId);
     }
 
-    if (maxConf < confThreshold)
+    if (boxes.empty()) {
       continue;
+    }
 
-    // Store detection
-    boxes.push_back(box);
-    confidences.push_back(maxConf);
-    classIds.push_back(classId);
+    std::vector<int> nmsIndices;
+    detection::utils::NMSBoxes(boxes, confidences, confThreshold, iouThreshold,
+                               nmsIndices);
+
+    if (nmsIndices.empty()) {
+      continue;
+    }
+
+    results.reserve(nmsIndices.size());
+
+    for (const int idx : nmsIndices) {
+      Detection seg;
+      seg.box = boxes[idx];
+      seg.conf = confidences[idx];
+      seg.classId = classIds[idx];
+
+      seg.box = detection::utils::scaleCoords(letterboxSize, seg.box,
+                                              image_slices[ptr_i].size(), true);
+      seg.box.x += image_slices[ptr_i].x;
+      seg.box.y += image_slices[ptr_i].y;
+
+      boxes[idx].x += image_slices[ptr_i].x;
+      boxes[idx].y += image_slices[ptr_i].y;
+
+      results.push_back(seg);
+    }
   }
 
-  // Early exit if no boxes after confidence threshold
-  if (boxes.empty()) {
-    return results;
+  // final nms above detections from all slices
+  int size = results.size();
+
+  std::vector<detection::BoundingBox> boxes;
+  boxes.reserve(size);
+
+  std::vector<float> confidences;
+  confidences.reserve(size);
+
+  for (int i = 0; i < size; i++) {
+    boxes.push_back(results[i].box);
+    confidences.push_back(results[i].conf);
   }
 
-  // 2. Apply NMS
   std::vector<int> nmsIndices;
-  utils::NMSBoxes(boxes, confidences, confThreshold, iouThreshold, nmsIndices);
+  detection::utils::NMSBoxes(boxes, confidences, confThreshold, iouThreshold,
+                             nmsIndices);
 
   if (nmsIndices.empty()) {
     return results;
   }
 
-  // 3. Prepare final results
-  results.reserve(nmsIndices.size());
+  std::vector<Detection> final_results;
+  final_results.reserve(nmsIndices.size());
 
   for (const int idx : nmsIndices) {
     Detection seg;
     seg.box = boxes[idx];
     seg.conf = confidences[idx];
-    seg.classId = classIds[idx];
+    seg.classId = results[idx].classId;
 
-    // 4. Scale box to original image
-    seg.box = utils::scaleCoords(letterboxSize, seg.box, origSize, true);
-    results.push_back(seg);
+    final_results.push_back(seg);
   }
 
-  return results;
+  return final_results;
 };

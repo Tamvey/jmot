@@ -1,10 +1,13 @@
-#include "utils.hpp"
+#include <opencv2/core/types.hpp>
+
 #include "structs.hpp"
+#include "utils.hpp"
 
 using namespace detection;
 
 std::vector<cv::Scalar>
-utils::generateColors(const std::vector<std::string> &classNames, int seed) {
+detection::utils::generateColors(const std::vector<std::string> &classNames,
+                                 int seed) {
   static std::unordered_map<size_t, std::vector<cv::Scalar>> cache;
   size_t key = 0;
   for (const auto &name : classNames) {
@@ -26,7 +29,8 @@ utils::generateColors(const std::vector<std::string> &classNames, int seed) {
   return colors;
 }
 
-std::vector<std::string> utils::getClassNames(const std::string &path) {
+std::vector<std::string>
+detection::utils::getClassNames(const std::string &path) {
   std::vector<std::string> classNames;
   std::ifstream f(path);
   if (!f) {
@@ -48,9 +52,10 @@ template <typename T> T clamp(const T &val, const T &low, const T &high) {
   return std::max(low, std::min(val, high));
 }
 
-void utils::NMSBoxes(const std::vector<BoundingBox> &boxes,
-                     const std::vector<float> &scores, float scoreThreshold,
-                     float nmsThreshold, std::vector<int> &indices) {
+void detection::utils::NMSBoxes(const std::vector<BoundingBox> &boxes,
+                                const std::vector<float> &scores,
+                                float scoreThreshold, float nmsThreshold,
+                                std::vector<int> &indices) {
   indices.clear();
   if (boxes.empty()) {
     return;
@@ -108,9 +113,10 @@ void utils::NMSBoxes(const std::vector<BoundingBox> &boxes,
   }
 }
 
-BoundingBox utils::scaleCoords(const cv::Size &letterboxShape,
-                               const BoundingBox &coords,
-                               const cv::Size &originalShape, bool p_Clip) {
+BoundingBox detection::utils::scaleCoords(const cv::Size &letterboxShape,
+                                          const BoundingBox &coords,
+                                          const cv::Size &originalShape,
+                                          bool p_Clip) {
   float gain =
       std::min((float)letterboxShape.height / (float)originalShape.height,
                (float)letterboxShape.width / (float)originalShape.width);
@@ -137,16 +143,17 @@ BoundingBox utils::scaleCoords(const cv::Size &letterboxShape,
   return ret;
 }
 
-cv::Mat utils::sigmoid(const cv::Mat &src) {
+cv::Mat detection::utils::sigmoid(const cv::Mat &src) {
   cv::Mat dst;
   cv::exp(-src, dst);
   dst = 1.0 / (1.0 + dst);
   return dst;
 }
 
-void utils::letterBox(const cv::Mat &image, cv::Mat &outImage,
-                      const cv::Size &newShape, const cv::Scalar &color,
-                      bool auto_, bool scaleFill, bool scaleUp, int stride) {
+void detection::utils::letterBox(const cv::Mat &image, cv::Mat &outImage,
+                                 const cv::Size &newShape,
+                                 const cv::Scalar &color, bool auto_,
+                                 bool scaleFill, bool scaleUp, int stride) {
   float r = std::min((float)newShape.height / (float)image.rows,
                      (float)newShape.width / (float)image.cols);
   if (!scaleUp) {
@@ -178,4 +185,38 @@ void utils::letterBox(const cv::Mat &image, cv::Mat &outImage,
   int right = dw - left;
   cv::copyMakeBorder(resized, outImage, top, bottom, left, right,
                      cv::BORDER_CONSTANT, color);
+}
+
+std::vector<cv::Rect>
+detection::utils::slice_image(const cv::Size image_size,
+                              detection::SAHIParams params) {
+  int x_dif = params.slice_width_ * params.overlap_width_ratio_;
+  int y_dif = params.slice_height_ * params.overlap_height_ratio_;
+  int x0 = 0, y0 = 0;
+
+  std::vector<cv::Rect> res;
+  while (true) {
+    x0 = 0;
+    while (true) {
+      res.push_back(
+          cv::Rect{x0, y0, std::min(params.slice_width_, image_size.width - x0),
+                   std::min(params.slice_height_, image_size.height - y0)});
+      x0 += params.slice_width_;
+
+      // out of row size
+      if (x0 >= image_size.width)
+        break;
+
+      x0 -= x_dif;
+    }
+
+    y0 += params.slice_height_;
+
+    // out of column size
+    if (y0 >= image_size.height)
+      break;
+
+    y0 -= y_dif;
+  }
+  return res;
 }

@@ -9,7 +9,7 @@ def validate(version, size):
 
 def export_to_onnx(version, size):
     model = YOLO(f"./models/yolo{version}{size}.pt")
-    model.export(format="onnx")
+    model.export(format="onnx", dynamic=True)
 
 if __name__ == '__main__':
   fire.Fire()

@@ -1,5 +1,7 @@
 #include <cxxopts.hpp>
 #include <getopt.h>
+#include <opencv2/core/types.hpp>
+#include <opencv2/imgproc.hpp>
 #include <string>
 #include <vector>
 
@@ -17,12 +19,12 @@ int main(int argc, char **argv) {
   options.add_options()(
       "i,image", "Image path",
       cxxopts::value<std::string>()->default_value(
-          "/home/matvey/projects/jmot/urban-view-with-cars-street.jpg"))(
+          "/home/matvey/Pictures/imgs/0000068_02104_d_0000006.jpg"))(
       "m,model", "Model path",
       cxxopts::value<std::string>()->default_value(
-          "/home/matvey/projects/jmot/scripts/models/yolo11l.engine"))(
+          "/home/matvey/projects/jmot/scripts/yolo11s.engine"))(
       "t,times", "Amount of measures",
-      cxxopts::value<int>()->default_value("10"));
+      cxxopts::value<int>()->default_value("1000000000"));
 
   auto result = options.parse(argc, argv);
 
@@ -34,9 +36,11 @@ int main(int argc, char **argv) {
   for (int j = 0; j < result["times"].as<int>(); j++) {
     for (int i = 0; i < imageNames.size(); ++i) {
       cv::Mat frame = cv::imread(imageNames[i]);
-
+      auto params = detection::SAHIParams(640, 640, 0.5, 0.5);
+      //   auto image_slices = detection::utils::slice_image(frame.size(),
+      //   params);
       std::vector<detection::Detection> output =
-          detector.detect(frame, 0.25, 0.45);
+          detector.detect(frame, true, 0.5, 0.45, params);
 #ifdef REFLECT
       int detections = output.size();
 
@@ -47,7 +51,7 @@ int main(int argc, char **argv) {
         cv::Scalar color = cv::Scalar(255, 0, 0);
 
         // Detection box
-        cv::rectangle(frame, {box.x, box.y, box.width, box.height}, color, 2);
+        cv::rectangle(frame, {box.x, box.y, box.width, box.height}, color, 1);
 
         // Detection box text
         std::string classString = std::to_string(detection.classId) + ' ' +
@@ -57,12 +61,16 @@ int main(int argc, char **argv) {
         cv::Rect textBox(box.x, box.y - 40, textSize.width + 10,
                          textSize.height + 20);
 
+        // draw slices in debug purpose
+        // for (auto &i : image_slices)
+        //   cv::rectangle(frame, i, cv::Scalar(0, 255, 0), 1);
+
         cv::rectangle(frame, textBox, color, cv::FILLED);
         cv::putText(frame, classString, cv::Point(box.x + 5, box.y - 10),
                     cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
       }
 
-      float scale = 0.2;
+      float scale = 1;
       cv::resize(frame, frame,
                  cv::Size(frame.cols * scale, frame.rows * scale));
       cv::imshow("Inference", frame);

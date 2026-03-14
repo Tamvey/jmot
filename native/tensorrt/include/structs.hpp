@@ -96,4 +96,16 @@ struct Detection {
   int classId{0};
 };
 
+struct SAHIParams {
+  SAHIParams(int slice_height, int slice_width, float overlap_heigth_ratio,
+             float overlap_width_ratio)
+      : slice_height_(slice_height), slice_width_(slice_width),
+        overlap_height_ratio_(overlap_heigth_ratio),
+        overlap_width_ratio_(overlap_width_ratio) {}
+  int slice_height_{640};
+  int slice_width_{640};
+  float overlap_height_ratio_{0.2};
+  float overlap_width_ratio_{0.2};
+};
+
 } // namespace detection

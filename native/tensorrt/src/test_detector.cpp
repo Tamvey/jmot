@@ -8,6 +8,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "detector.hpp"
+#include "oc_sort.hpp"
 #include "structs.hpp"
 
 using namespace std;
@@ -19,12 +20,12 @@ int main(int argc, char **argv) {
   options.add_options()(
       "i,image", "Image path",
       cxxopts::value<std::string>()->default_value(
-          "/home/matvey/Pictures/imgs/0000068_02104_d_0000006.jpg"))(
+          "/home/matvey/Pictures/group-people-city-composition.jpg"))(
       "m,model", "Model path",
       cxxopts::value<std::string>()->default_value(
-          "/home/matvey/projects/jmot/scripts/yolo11s.engine"))(
+          "/home/matvey/projects/jmot/scripts/models/yolo11s_16.engine"))(
       "t,times", "Amount of measures",
-      cxxopts::value<int>()->default_value("1000000000"));
+      cxxopts::value<int>()->default_value("10"));
 
   auto result = options.parse(argc, argv);
 
@@ -73,8 +74,8 @@ int main(int argc, char **argv) {
       float scale = 1;
       cv::resize(frame, frame,
                  cv::Size(frame.cols * scale, frame.rows * scale));
-      cv::imshow("Inference", frame);
-      cv::waitKey(-1);
+      //   cv::imshow("Inference", frame);
+      //   cv::waitKey(-1);
 #endif
     }
   }

@@ -37,6 +37,7 @@ set(PROJECT_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/utils.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/logger.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/oc_sort.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/Hungarian.cpp
 )
 
 # set TensorRT version
@@ -72,6 +73,7 @@ endif()
 if (BUILD_TEST_PROGRAM)
   add_executable(test_detector ${CMAKE_CURRENT_LIST_DIR}/src/test_detector.cpp)
   add_executable(test_tracker ${CMAKE_CURRENT_LIST_DIR}/src/test_tracker.cpp)
+  add_executable(eigen_test ${CMAKE_CURRENT_LIST_DIR}/src/eigen.cpp)
 
   target_link_libraries(test_detector PRIVATE ${PROJECT_NAME})
   target_link_libraries(test_tracker PRIVATE ${PROJECT_NAME})

@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <deque>
+#include <iostream>
 #include <optional>
 
 #include <eigen3/Eigen/Core>
@@ -11,8 +12,9 @@
 
 namespace oc_sort {
 
-inline Eigen::Vector2f speed_direction(Eigen::Vector4f bbox1,
-                                       Eigen::Vector4f bbox2) {
+inline Eigen::Vector2f
+speed_direction(Eigen::Vector<float, MEAS_DIM + 1> bbox1,
+                Eigen::Vector<float, MEAS_DIM + 1> bbox2) {
   auto cx1 = (bbox1[0] + bbox1[2]) / 2.0;
   auto cy1 = (bbox1[1] + bbox1[3]) / 2.0;
   auto cx2 = (bbox2[0] + bbox2[2]) / 2.0;
@@ -25,9 +27,9 @@ inline Eigen::Vector2f speed_direction(Eigen::Vector4f bbox1,
 
 inline Eigen::Vector<float, 4>
 convert_x_to_bbox(const Eigen::Vector<float, 7> &x) {
-  auto w = sqrt(x[2] * x[3]);
-  auto h = x[2] / w;
-  return {x[0] - w / 2.0, x[1] - h / 2.0, x[0] + w / 2.0, x[1] + h / 2.0};
+  float w = sqrt(x[2] * x[3]);
+  float h = x[2] / w;
+  return {x[0] - w / 2.0f, x[1] - h / 2.0f, w, h};
 }
 
 inline Eigen::Vector<float, MEAS_DIM> xywh2xysr(const Eigen::Vector4f &bbox) {
@@ -37,9 +39,7 @@ inline Eigen::Vector<float, MEAS_DIM> xywh2xysr(const Eigen::Vector4f &bbox) {
   float s = w * h;
   float r = w / h;
 
-  Eigen::Vector<float, MEAS_DIM> obs;
-  obs << x, y, s, r;
-  return obs;
+  return {x, y, s, r};
 }
 
 inline Eigen::Vector<float, MEAS_DIM> xyxy2xysr(const Eigen::Vector4f &bbox) {
@@ -65,8 +65,8 @@ public:
                    float Q_xy_scaling = 0.01f, float Q_s_scaling = 0.0001f);
 
   Eigen::Vector<float, MEAS_DIM> predict();
-  void update(std::optional<Eigen::Vector4f> bbox, float confidence, int cls,
-              int det_ind);
+  void update(std::optional<Eigen::Vector<float, MEAS_DIM + 1>> bbox,
+              float confidence, int cls, int det_ind);
 
   // Геттеры
   int get_id() const { return id; }
@@ -78,8 +78,15 @@ public:
   int get_age() const { return age; }
   Eigen::Vector<float, STATE_DIM> get_state() const { return kf.x; }
 
-  Eigen::Vector4f get_last_observation() const { return last_observation; }
+  Eigen::Vector<float, MEAS_DIM + 1> get_last_observation() const {
+    return last_observation;
+  }
   std::optional<Eigen::Vector2f> get_velocity() const { return velocity; }
+
+  std::unordered_map<int, Eigen::Vector<float, MEAS_DIM + 1>>
+  get_observations() const {
+    return observations;
+  }
 
   KalmanFilter kf;
 
@@ -97,9 +104,9 @@ private:
   float delta_t;
   int max_obs;
 
-  Eigen::Vector<float, MEAS_DIM> last_observation;
+  Eigen::Vector<float, MEAS_DIM + 1> last_observation;
   std::deque<Eigen::Vector<float, MEAS_DIM>> history_observations;
-  std::unordered_map<int, Eigen::Vector4f> observations;
+  std::unordered_map<int, Eigen::Vector<float, MEAS_DIM + 1>> observations;
   std::optional<Eigen::Vector2f> velocity;
 
   float Q_xy_scaling;
@@ -135,7 +142,7 @@ KalmanBoxTracker::KalmanBoxTracker(const Eigen::Vector<float, 7> &bbox, int cls,
 
   kf.x.head<MEAS_DIM>() = xywh2xysr(bbox.head<MEAS_DIM>());
 
-  last_observation = Eigen::Vector<float, MEAS_DIM>::Constant(-1.0f);
+  last_observation = Eigen::Vector<float, MEAS_DIM + 1>::Constant(-1.0f);
 
   id = count++;
 }
@@ -149,18 +156,19 @@ Eigen::Vector<float, MEAS_DIM> KalmanBoxTracker::predict() {
     hit_streak = 0;
   time_since_update++;
   history_observations.push_back(convert_x_to_bbox(kf.x));
-  return history_observations[history_observations.size() - 1];
+  return history_observations.back();
 }
 
 void KalmanBoxTracker::update(
-    std::optional<Eigen::Vector<float, MEAS_DIM>> bbox, float confidence,
+    std::optional<Eigen::Vector<float, MEAS_DIM + 1>> bbox, float confidence,
     int cls, int det_ind) {
   this->det_ind = det_ind;
   if (bbox.has_value()) {
+    this->det_ind = det_ind;
     conf = confidence;
     this->cls = cls;
     if (last_observation.sum() >= 0) {
-      std::optional<Eigen::Vector4f> previous_box;
+      std::optional<Eigen::Vector<float, MEAS_DIM + 1>> previous_box;
       for (int i = 0; i < delta_t; i++) {
         auto dt = delta_t - i;
         if (observations.find(age - dt) != observations.end()) {
@@ -173,11 +181,11 @@ void KalmanBoxTracker::update(
     }
     last_observation = bbox.value();
     observations[age] = bbox.value();
-    history_observations.push_back(bbox.value());
+    history_observations.push_back(bbox.value().head(4));
     time_since_update = 0;
     hits++;
     hit_streak++;
-    kf.update(xywh2xysr(bbox.value()));
+    kf.update(xywh2xysr(bbox.value().head(4)));
 
   } else {
     kf.update({});

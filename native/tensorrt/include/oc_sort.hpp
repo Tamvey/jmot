@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <eigen3/Eigen/Core>
@@ -8,14 +9,28 @@
 #include <string>
 #include <vector>
 
+#include "Eigen/src/Core/Matrix.h"
+#include "Hungarian.h"
 #include "detector.hpp"
 #include "kalman_box_tracker.hpp"
+#include "kalman_filter.hpp"
 
 namespace oc_sort {
 
-struct TrackOutput {
-  std::vector<float> data;
+struct DirectionResults {
+  Eigen::MatrixXf dy;
+  Eigen::MatrixXf dx;
 };
+
+Eigen::MatrixXf iou_batch(const Eigen::MatrixXf &dets,
+                          const Eigen::MatrixXf &trks);
+
+DirectionResults speed_direction_batch(const Eigen::MatrixXf &dets,
+                                       const Eigen::MatrixXf &trks);
+
+Eigen::Vector<float, MEAS_DIM + 1> k_previous_obs(
+    std::unordered_map<int, Eigen::Vector<float, MEAS_DIM + 1>> observations,
+    int age, int delta_t);
 
 class OcSort {
 public:
@@ -34,15 +49,20 @@ public:
     float inertia = 0.2f;
     float Q_xy_scaling = 0.01f;
     float Q_s_scaling = 0.0001f;
-    std::string engine_path = "./yolo11s.engine";
+    std::string engine_path = "./models/yolo11s_16.engine";
+  };
+
+  struct AssociateResults {
+    std::vector<std::pair<int, int>> matched;
+    std::vector<int> unmatched_trks;
+    std::vector<int> unmatched_dets;
   };
 
   OcSort(const Params &params);
 
   ~OcSort();
 
-  std::vector<TrackOutput>
-  update(const std::vector<Eigen::Vector<float, 6>> &dets, const cv::Mat &img);
+  std::vector<shared_ptr<oc_sort::KalmanBoxTracker>> update(const cv::Mat &img);
 
   void reset();
 
@@ -55,6 +75,7 @@ public:
 private:
   detection::Detector detector_;
   Params params_;
+  HungarianAlgorithm hung_algo;
 
   int frame_count_;
   std::vector<std::shared_ptr<KalmanBoxTracker>> active_tracks_;
@@ -63,12 +84,12 @@ private:
 
   std::vector<std::array<float, 5>> predict_tracks() const;
 
-  static std::vector<std::pair<int, int>> associate_first(
-      const cv::Mat &dets, const std::vector<std::array<float, 5>> &trks,
-      const std::string &asso_func, float asso_threshold,
-      const std::vector<std::array<float, 2>> &velocities,
-      const std::vector<std::vector<std::array<float, 5>>> &k_observations,
-      float inertia, int image_w, int image_h);
+  AssociateResults associate(
+      const std::vector<Eigen::Vector<float, 7>> &dets,
+      const std::vector<Eigen::Vector<float, 4>> &trks, float asso_threshold,
+      const Eigen::MatrixXf &velocities,
+      const std::vector<Eigen::Vector<float, MEAS_DIM + 1>> &k_observations,
+      float inertia);
 
   std::shared_ptr<KalmanBoxTracker>
   create_tracker_from_det(const std::vector<float> &det, int det_ind);

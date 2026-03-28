@@ -1,6 +1,4 @@
 #include <algorithm>
-#include <exception>
-#include <memory>
 #include <numeric>
 #include <vector>
 #include <yaml-cpp/node/node.h>
@@ -9,9 +7,8 @@
 
 #include <Eigen/Core>
 
-#include "Hungarian.h"
-#include "kalman_box_tracker.hpp"
 #include "kalman_filter.hpp"
+#include "lapjv.h"
 #include "oc_sort.hpp"
 #include "structs.hpp"
 
@@ -58,9 +55,9 @@ oc_sort::OcSort::fromYaml(const std::string &yaml_path) {
 
 int oc_sort::OcSort::frame_count() const { return frame_count_; }
 
-std::vector<std::vector<double>> eigen_to_vector2d(const Eigen::MatrixXf &mat) {
-  std::vector<std::vector<double>> result(mat.rows(),
-                                          std::vector<double>(mat.cols()));
+std::vector<std::vector<float>> eigen_to_vector2d(const Eigen::MatrixXf &mat) {
+  std::vector<std::vector<float>> result(mat.rows(),
+                                         std::vector<float>(mat.cols()));
 
   for (int i = 0; i < mat.rows(); ++i) {
     for (int j = 0; j < mat.cols(); ++j) {
@@ -222,8 +219,9 @@ oc_sort::OcSort::AssociateResults oc_sort::OcSort::associate(
 
   // Linear assignment (Hungarian);
   std::vector<int> assignment;
-  std::vector<std::vector<double>> final_cost_v = eigen_to_vector2d(final_cost);
-  hung_algo_.Solve(final_cost_v, assignment);
+  std::vector<int> assignment_col;
+  std::vector<std::vector<float>> final_cost_v = eigen_to_vector2d(final_cost);
+  execLapjv(final_cost_v, assignment, assignment_col);
 
   int N = dets.size();
   int M = k_observations.size();
@@ -263,7 +261,7 @@ oc_sort::OcSort::AssociateResults oc_sort::OcSort::associate(
   return as_res;
 }
 
-std::vector<shared_ptr<oc_sort::KalmanBoxTracker>>
+std::vector<std::shared_ptr<oc_sort::KalmanBoxTracker>>
 oc_sort::OcSort::update(const cv::Mat &img) {
   auto detections = detector_.detect(img, params_.use_sahi);
   frame_count_++;
@@ -342,10 +340,11 @@ oc_sort::OcSort::update(const cv::Mat &img) {
 
     // std::cout << "iou_left:\n" << iou_left << std::endl;
     if (iou_left.maxCoeff() >= params_.iou_threshold) {
-      std::vector<std::vector<double>> cost_left =
+      std::vector<std::vector<float>> cost_left =
           eigen_to_vector2d((2.5f - iou_left.array()).matrix());
       std::vector<int> rematch_assignment;
-      hung_algo_.Solve(cost_left, rematch_assignment);
+      std::vector<int> rematch_assignment_cols;
+      execLapjv(cost_left, rematch_assignment, rematch_assignment_cols);
 
       std::vector<bool> keep_det(as_res.unmatched_dets.size(), true);
       std::vector<bool> keep_trk(as_res.unmatched_trks.size(), true);
@@ -390,7 +389,7 @@ oc_sort::OcSort::update(const cv::Mat &img) {
     active_tracks_.push_back(trk);
   }
 
-  std::vector<shared_ptr<KalmanBoxTracker>> outputs;
+  std::vector<std::shared_ptr<KalmanBoxTracker>> outputs;
   for (auto it = active_tracks_.begin(); it != active_tracks_.end();) {
     auto &trk = *it;
 
@@ -419,8 +418,7 @@ oc_sort::OcSort::update(const cv::Mat &img) {
 }
 
 oc_sort::OcSort::OcSort(const oc_sort::OcSort::Params &params)
-    : params_(params), hung_algo_(),
-      detector_(params_.engine_path, params_.sahi_params, params_.det_thresh,
-                params_.iou_threshold) {}
+    : params_(params), detector_(params_.engine_path, params_.sahi_params,
+                                 params_.det_thresh, params_.iou_threshold) {}
 
 oc_sort::OcSort::~OcSort() {}

@@ -38,7 +38,7 @@ set(PROJECT_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/utils.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/logger.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/oc_sort.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/Hungarian.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/lapjv.cpp
 )
 
 # set TensorRT version

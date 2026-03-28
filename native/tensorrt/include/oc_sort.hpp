@@ -1,16 +1,12 @@
 #pragma once
 
-#include <algorithm>
 #include <array>
-#include <cstddef>
 #include <eigen3/Eigen/Core>
 #include <memory>
 #include <opencv4/opencv2/opencv.hpp>
 #include <string>
 #include <vector>
 
-#include "Eigen/src/Core/Matrix.h"
-#include "Hungarian.h"
 #include "detector.hpp"
 #include "kalman_box_tracker.hpp"
 #include "kalman_filter.hpp"
@@ -62,7 +58,8 @@ public:
   };
 
   static Params fromYaml(const std::string &yaml_path);
-  std::vector<shared_ptr<oc_sort::KalmanBoxTracker>> update(const cv::Mat &img);
+  std::vector<std::shared_ptr<oc_sort::KalmanBoxTracker>>
+  update(const cv::Mat &img);
 
   int frame_count() const;
   const Params &params() const;
@@ -74,7 +71,6 @@ public:
 
 private:
   Params params_;
-  HungarianAlgorithm hung_algo_;
   detection::Detector detector_;
 
   int frame_count_ = -1;

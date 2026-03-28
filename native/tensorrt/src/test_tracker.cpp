@@ -3,7 +3,6 @@
 #include <opencv2/imgproc.hpp>
 
 #include "kalman_box_tracker.hpp"
-#include "kalman_filter.hpp"
 #include "oc_sort.hpp"
 
 std::string coco_to_kitti_mapping(int class_id) {
@@ -30,8 +29,9 @@ int main() {
   std::filesystem::path videos(
       "/media/matvey/EB6B-E36F/diploma/kitti_metrics/data_tracking_image_2/"
       "training/image_02/");
-  std::filesystem::create_directory(filesystem::current_path() / "results");
-  std::filesystem::path results(filesystem::current_path() / "results");
+  std::filesystem::create_directory(std::filesystem::current_path() /
+                                    "results");
+  std::filesystem::path results(std::filesystem::current_path() / "results");
 
   for (const auto &path : std::filesystem::directory_iterator(videos)) {
     oc_sort::KalmanBoxTracker::count = 0;
@@ -61,33 +61,33 @@ int main() {
                      track->get_last_observation()[3]
               << " " << -1 << " " << -1 << " " << -1 << " " << -1 << " " << -1
               << " " << -1 << " " << -1 << "\n";
-          // auto color = cv::Scalar(255, 0, 0);
-          // cv::rectangle(frame,
-          //               cv::Rect(track->get_last_observation()[0],
-          //                        track->get_last_observation()[1],
-          //                        track->get_last_observation()[2],
-          //                        track->get_last_observation()[3]),
-          //               color);
-          // std::string classString =
-          //     std::to_string(track->get_cls()) + ' ' +
-          //     std::to_string(track->get_conf()).substr(0, 4);
-          // cv::Size textSize =
-          //     cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
-          // cv::Rect textBox(track->get_last_observation()[0],
-          //                  track->get_last_observation()[1] - 40,
-          //                  textSize.width + 10, textSize.height + 20);
+          auto color = cv::Scalar(255, 0, 0);
+          cv::rectangle(frame,
+                        cv::Rect(track->get_last_observation()[0],
+                                 track->get_last_observation()[1],
+                                 track->get_last_observation()[2],
+                                 track->get_last_observation()[3]),
+                        color);
+          std::string classString =
+              std::to_string(track->get_cls()) + ' ' +
+              std::to_string(track->get_conf()).substr(0, 4);
+          cv::Size textSize =
+              cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
+          cv::Rect textBox(track->get_last_observation()[0],
+                           track->get_last_observation()[1] - 40,
+                           textSize.width + 10, textSize.height + 20);
 
-          // cv::rectangle(frame, textBox, color, cv::FILLED);
-          // cv::putText(frame, classString,
-          //             cv::Point(track->get_last_observation()[0] + 5,
-          //                       track->get_last_observation()[1] - 10),
-          //             cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
+          cv::rectangle(frame, textBox, color, cv::FILLED);
+          cv::putText(frame, classString,
+                      cv::Point(track->get_last_observation()[0] + 5,
+                                track->get_last_observation()[1] - 10),
+                      cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
         }
-        // float scale = 1;
-        // cv::resize(frame, frame,
-        //            cv::Size(frame.cols * scale, frame.rows * scale));
-        // cv::imshow("img", frame);
-        // cv::waitKey(1);
+        float scale = 1;
+        cv::resize(frame, frame,
+                   cv::Size(frame.cols * scale, frame.rows * scale));
+        cv::imshow("img", frame);
+        cv::waitKey(1);
       }
       out.flush();
     }

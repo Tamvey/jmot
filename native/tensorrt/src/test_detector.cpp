@@ -8,7 +8,6 @@
 #include <opencv2/opencv.hpp>
 
 #include "detector.hpp"
-#include "oc_sort.hpp"
 #include "structs.hpp"
 
 using namespace std;

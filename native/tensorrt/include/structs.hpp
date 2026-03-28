@@ -102,6 +102,8 @@ struct SAHIParams {
       : slice_height_(slice_height), slice_width_(slice_width),
         overlap_height_ratio_(overlap_heigth_ratio),
         overlap_width_ratio_(overlap_width_ratio) {}
+  SAHIParams() = default;
+
   int slice_height_{640};
   int slice_width_{640};
   float overlap_height_ratio_{0.2};

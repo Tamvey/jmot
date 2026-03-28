@@ -17,6 +17,7 @@ set(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda")
 find_package(CUDA REQUIRED)
 find_package (Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(yaml-cpp REQUIRED)
 # find_package(CudaToolkit REQUIRED)
 
 # set includes and sources
@@ -61,7 +62,7 @@ endif()
 # build library
 add_library(${PROJECT_NAME} SHARED ${PROJECT_SOURCES})
 target_link_directories(${PROJECT_NAME} PRIVATE ${TENSORRT_LIB_DIR})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} cudart nvinfer)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} cudart nvinfer yaml-cpp::yaml-cpp)
 
 # set definitions
 if(JETSON)
@@ -73,7 +74,6 @@ endif()
 if (BUILD_TEST_PROGRAM)
   add_executable(test_detector ${CMAKE_CURRENT_LIST_DIR}/src/test_detector.cpp)
   add_executable(test_tracker ${CMAKE_CURRENT_LIST_DIR}/src/test_tracker.cpp)
-  add_executable(eigen_test ${CMAKE_CURRENT_LIST_DIR}/src/eigen.cpp)
 
   target_link_libraries(test_detector PRIVATE ${PROJECT_NAME})
   target_link_libraries(test_tracker PRIVATE ${PROJECT_NAME})
@@ -82,4 +82,4 @@ if (BUILD_TEST_PROGRAM)
   endif()
 endif()
 
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/output.mp4 DESTINATION ${CMAKE_BINARY_DIR}/tensorrt)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/config.yaml DESTINATION ${CMAKE_BINARY_DIR}/tensorrt)

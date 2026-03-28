@@ -29,7 +29,9 @@ int main(int argc, char **argv) {
 
   auto result = options.parse(argc, argv);
 
-  auto detector = detection::Detector(result["model"].as<std::string>(), "");
+  auto params = detection::SAHIParams(640, 640, 0.5, 0.5);
+  auto detector =
+      detection::Detector(result["model"].as<std::string>(), params);
 
   std::vector<std::string> imageNames;
   imageNames.push_back(result["image"].as<std::string>());
@@ -37,11 +39,9 @@ int main(int argc, char **argv) {
   for (int j = 0; j < result["times"].as<int>(); j++) {
     for (int i = 0; i < imageNames.size(); ++i) {
       cv::Mat frame = cv::imread(imageNames[i]);
-      auto params = detection::SAHIParams(640, 640, 0.5, 0.5);
       //   auto image_slices = detection::utils::slice_image(frame.size(),
       //   params);
-      std::vector<detection::Detection> output =
-          detector.detect(frame, true, 0.5, 0.45, params);
+      std::vector<detection::Detection> output = detector.detect(frame, true);
 #ifdef REFLECT
       int detections = output.size();
 

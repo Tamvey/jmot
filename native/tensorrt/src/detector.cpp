@@ -15,9 +15,10 @@
 
 using namespace detection;
 
-Detector::Detector(const std::string &engine_path,
-                   const std::string &file_class)
-    : pt_(engine_path) {
+Detector::Detector(const std::string &engine_path, const SAHIParams &params,
+                   float conf_thresh, float iou_thresh)
+    : pt_(engine_path), params_(params), conf_thresh_(conf_thresh),
+      iou_thresh_(iou_thresh) {
   pt_.set_table_name("pre-processing,inference,post-processing\n");
 #if TRT == 10
   tensorrt_base_ = std::make_unique<TensorRTv10Engine>(engine_path);
@@ -85,9 +86,8 @@ void Detector::preprocess(const cv::Mat &image,
     fut.wait();
 }
 
-std::vector<detection::Detection>
-Detector::detect(const cv::Mat &image, bool useSahi, float confThreshold,
-                 float iouThreshold, SAHIParams params) noexcept {
+std::vector<detection::Detection> Detector::detect(const cv::Mat &image,
+                                                   bool useSahi) noexcept {
   // input tensor
   pt_.start("detect");
 
@@ -95,7 +95,7 @@ Detector::detect(const cv::Mat &image, bool useSahi, float confThreshold,
   std::vector<cv::Rect> image_slices;
 
   if (useSahi)
-    image_slices = detection::utils::slice_image(image.size(), params);
+    image_slices = detection::utils::slice_image(image.size(), params_);
   else
     image_slices = detection::utils::slice_image(
         image.size(),
@@ -128,7 +128,7 @@ Detector::detect(const cv::Mat &image, bool useSahi, float confThreshold,
 
   auto result = postprocess(image.size(), letterboxSize,
                             tensorrt_base_->host_output_buffers_, image_slices,
-                            confThreshold, iouThreshold);
+                            conf_thresh_, iou_thresh_);
   pt_.stop("detect", "\n");
   return result;
 }

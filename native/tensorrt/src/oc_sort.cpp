@@ -1,7 +1,11 @@
 #include <algorithm>
+#include <exception>
 #include <memory>
 #include <numeric>
 #include <vector>
+#include <yaml-cpp/node/node.h>
+#include <yaml-cpp/node/parse.h>
+#include <yaml-cpp/yaml.h>
 
 #include <Eigen/Core>
 
@@ -10,6 +14,49 @@
 #include "kalman_filter.hpp"
 #include "oc_sort.hpp"
 #include "structs.hpp"
+
+oc_sort::OcSort::Params
+oc_sort::OcSort::fromYaml(const std::string &yaml_path) {
+  try {
+    YAML::Node config = YAML::LoadFile(yaml_path);
+    oc_sort::OcSort::Params params;
+
+    if (config["tracker"]) {
+      auto tracker = config["tracker"];
+      params.det_thresh = tracker["det_thresh"].as<float>(0.3f);
+      params.max_age = tracker["max_age"].as<int>(30);
+      params.max_obs = tracker["max_obs"].as<int>(35);
+      params.min_hits = tracker["min_hits"].as<int>(3);
+      params.iou_threshold = tracker["iou_threshold"].as<float>(0.5f);
+      params.min_conf = tracker["min_conf"].as<float>(0.1f);
+      params.delta_t = tracker["delta_t"].as<int>(3);
+      params.inertia = tracker["inertia"].as<float>(0.2f);
+      params.Q_xy_scaling = tracker["Q_xy_scaling"].as<float>(0.01f);
+      params.Q_s_scaling = tracker["Q_s_scaling"].as<float>(0.0001f);
+    }
+
+    if (config["detector"]) {
+      auto detector = config["detector"];
+      params.engine_path = detector["engine_path"].as<std::string>();
+      params.use_sahi = detector["use_sahi"].as<bool>(false);
+      if (detector["sahi"]) {
+        auto sahi = detector["sahi"];
+        params.sahi_params = detection::SAHIParams{
+            sahi["patch_width"].as<int>(640), sahi["patch_height"].as<int>(640),
+            sahi["overlap_ratio"].as<float>(0.2f),
+            sahi["conf_threshold"].as<float>(0.2f)};
+      }
+    }
+
+    return params;
+
+  } catch (const YAML::Exception &e) {
+    throw std::runtime_error("Failed to load YAML config: " +
+                             std::string(e.what()));
+  }
+}
+
+int oc_sort::OcSort::frame_count() const { return frame_count_; }
 
 std::vector<std::vector<double>> eigen_to_vector2d(const Eigen::MatrixXf &mat) {
   std::vector<std::vector<double>> result(mat.rows(),
@@ -169,14 +216,14 @@ oc_sort::OcSort::AssociateResults oc_sort::OcSort::associate(
 
   // Final cost
   Eigen::MatrixXf final_cost =
-      (2.5f - iou_matrix.array() + angle_diff_cost.array()).matrix();
+      (2.5f - (iou_matrix.array() + angle_diff_cost.array())).matrix();
 
   // std::cout << "final_cost:\n" << final_cost << std::endl;
 
   // Linear assignment (Hungarian);
   std::vector<int> assignment;
   std::vector<std::vector<double>> final_cost_v = eigen_to_vector2d(final_cost);
-  hung_algo.Solve(final_cost_v, assignment);
+  hung_algo_.Solve(final_cost_v, assignment);
 
   int N = dets.size();
   int M = k_observations.size();
@@ -218,8 +265,7 @@ oc_sort::OcSort::AssociateResults oc_sort::OcSort::associate(
 
 std::vector<shared_ptr<oc_sort::KalmanBoxTracker>>
 oc_sort::OcSort::update(const cv::Mat &img) {
-  auto detections = detector_.detect(img, true, 0.2, 0.2,
-                                     detection::SAHIParams{320, 320, 0.2, 0.2});
+  auto detections = detector_.detect(img, params_.use_sahi);
   frame_count_++;
 
   // sieve by threshold and form detection array
@@ -299,7 +345,7 @@ oc_sort::OcSort::update(const cv::Mat &img) {
       std::vector<std::vector<double>> cost_left =
           eigen_to_vector2d((2.5f - iou_left.array()).matrix());
       std::vector<int> rematch_assignment;
-      hung_algo.Solve(cost_left, rematch_assignment);
+      hung_algo_.Solve(cost_left, rematch_assignment);
 
       std::vector<bool> keep_det(as_res.unmatched_dets.size(), true);
       std::vector<bool> keep_trk(as_res.unmatched_trks.size(), true);
@@ -373,6 +419,8 @@ oc_sort::OcSort::update(const cv::Mat &img) {
 }
 
 oc_sort::OcSort::OcSort(const oc_sort::OcSort::Params &params)
-    : params_(params), detector_(params.engine_path, ""), hung_algo({}) {}
+    : params_(params), hung_algo_(),
+      detector_(params_.engine_path, params_.sahi_params, params_.det_thresh,
+                params_.iou_threshold) {}
 
 oc_sort::OcSort::~OcSort() {}

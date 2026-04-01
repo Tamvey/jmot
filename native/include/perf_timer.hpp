@@ -10,6 +10,8 @@ public:
     out_.open(model_path.substr(last_slash + 1));
   }
 
+  perf_timer() = default;
+
   void set_table_name(const std::string &table_name) { out_ << table_name; }
 
   void start(const std::string &fname) {
@@ -26,7 +28,7 @@ public:
       return;
     auto spent =
         std::chrono::high_resolution_clock::now() - tps.find(fname)->second;
-    out_ << std::chrono::duration_cast<std::chrono::microseconds>(spent).count()
+    out_ << std::chrono::duration_cast<std::chrono::milliseconds>(spent).count()
          << postfix;
   }
 

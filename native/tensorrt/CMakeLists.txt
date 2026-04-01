@@ -64,6 +64,10 @@ add_library(${PROJECT_NAME} SHARED ${PROJECT_SOURCES})
 target_link_directories(${PROJECT_NAME} PRIVATE ${TENSORRT_LIB_DIR})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} cudart nvinfer yaml-cpp::yaml-cpp)
 
+if(PERF_TRACKER)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE PERF_TRACKER=ON)
+endif()
+
 # set definitions
 if(JETSON)
   target_compile_definitions(${PROJECT_NAME} PRIVATE TRT=8)
@@ -79,6 +83,9 @@ if (BUILD_TEST_PROGRAM)
   target_link_libraries(test_tracker PRIVATE ${PROJECT_NAME})
   if(REFLECT)
       target_compile_definitions(test_detector PRIVATE REFLECT=ON)
+  endif()
+  if(KITTI_RESULTS)
+      target_compile_definitions(test_tracker PRIVATE KITTI_RESULTS=ON)
   endif()
 endif()
 

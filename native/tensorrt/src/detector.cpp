@@ -17,9 +17,12 @@ using namespace detection;
 
 Detector::Detector(const std::string &engine_path, const SAHIParams &params,
                    float conf_thresh, float iou_thresh)
-    : pt_(engine_path), params_(params), conf_thresh_(conf_thresh),
+    : pt_{}, params_(params), conf_thresh_(conf_thresh),
       iou_thresh_(iou_thresh) {
+#ifdef PERF_DET
+  pt_ = perf_timer{engine_path};
   pt_.set_table_name("pre-processing,inference,post-processing\n");
+#endif
 #if TRT == 10
   tensorrt_base_ = std::make_unique<TensorRTv10Engine>(engine_path);
 #else
@@ -88,9 +91,10 @@ void Detector::preprocess(const cv::Mat &image,
 
 std::vector<detection::Detection> Detector::detect(const cv::Mat &image,
                                                    bool useSahi) noexcept {
-  // input tensor
+// input tensor
+#ifdef PERF_DET
   pt_.start("detect");
-
+#endif
   auto input_tensor = tensorrt_base_->input_[0];
   std::vector<cv::Rect> image_slices;
 
@@ -103,22 +107,27 @@ std::vector<detection::Detection> Detector::detect(const cv::Mat &image,
 
   preprocess(image, tensorrt_base_->host_input_buffers_[0], input_tensor,
              image_slices);
-
+#ifdef PERF_DET
   pt_.stop("detect", ",");
-
+#endif
   if (tensorrt_base_->copy_all_inputs_to_device()) {
     logger_->log(Logger::Severity::kERROR, "H2D failed");
     return {};
   }
-
+#ifdef PERF_DET
   pt_.start("detect");
+#endif #endif
+
   if (tensorrt_base_->inference()) {
     logger_->log(Logger::Severity::kERROR, "Inference failed");
     return {};
   }
+#ifdef PERF_DET
   pt_.stop("detect", ",");
-
+#endif
+#ifdef PERF_DET
   pt_.start("detect");
+#endif
   if (tensorrt_base_->copy_all_outputs_to_host()) {
     logger_->log(Logger::Severity::kERROR, "D2H failed");
     return {};
@@ -129,7 +138,9 @@ std::vector<detection::Detection> Detector::detect(const cv::Mat &image,
   auto result = postprocess(image.size(), letterboxSize,
                             tensorrt_base_->host_output_buffers_, image_slices,
                             conf_thresh_, iou_thresh_);
+#ifdef PERF_DET
   pt_.stop("detect", "\n");
+#endif
   return result;
 }
 

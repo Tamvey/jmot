@@ -72,6 +72,7 @@ public:
 private:
   Params params_;
   detection::Detector detector_;
+  perf_timer pt_;
 
   int frame_count_ = -1;
   std::vector<std::shared_ptr<KalmanBoxTracker>> active_tracks_;

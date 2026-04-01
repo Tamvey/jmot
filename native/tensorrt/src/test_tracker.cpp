@@ -26,6 +26,7 @@ std::string coco_to_kitti_mapping(int class_id) {
 }
 
 int main() {
+#ifdef KITTI_RESULTS
   std::filesystem::path videos(
       "/media/matvey/EB6B-E36F/diploma/kitti_metrics/data_tracking_image_2/"
       "training/image_02/");
@@ -92,5 +93,58 @@ int main() {
       out.flush();
     }
   }
+#else
+  cv::VideoCapture vc("/home/matvey/Videos/test_videos/plane_3x.mp4");
+  std::cout << cv::getBuildInformation() << std::endl;
+  std::printf("backend_name: %d\n", vc.getBackendName());
+  std::printf("is_opened: %d\n", vc.isOpened());
+  oc_sort::OcSort::Params params = oc_sort::OcSort::fromYaml("./config.yaml");
+
+  auto oc_sort = oc_sort::OcSort(params);
+  while (true) {
+    cv::Mat frame;
+    auto res = vc.read(frame);
+    if (!res)
+      break;
+    auto tracks = oc_sort.update(frame);
+    for (auto &track : tracks) {
+      std::cout << oc_sort.frame_count() << " " << track->get_id() << " "
+                << coco_to_kitti_mapping(track->get_cls()) << " " << -1 << " "
+                << -1 << " " << -1 << " " << track->get_last_observation()[0]
+                << " " << track->get_last_observation()[1] << " "
+                << track->get_last_observation()[0] +
+                       track->get_last_observation()[2]
+                << " "
+                << track->get_last_observation()[1] +
+                       track->get_last_observation()[3]
+                << " " << -1 << " " << -1 << " " << -1 << " " << -1 << " " << -1
+                << " " << -1 << " " << -1 << "\n";
+      auto color = cv::Scalar(255, 0, 0);
+      cv::rectangle(frame,
+                    cv::Rect(track->get_last_observation()[0],
+                             track->get_last_observation()[1],
+                             track->get_last_observation()[2],
+                             track->get_last_observation()[3]),
+                    color);
+      std::string classString = std::to_string(track->get_cls()) + ' ' +
+                                std::to_string(track->get_conf()).substr(0, 4);
+      cv::Size textSize =
+          cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
+      cv::Rect textBox(track->get_last_observation()[0],
+                       track->get_last_observation()[1] - 40,
+                       textSize.width + 10, textSize.height + 20);
+
+      cv::rectangle(frame, textBox, color, cv::FILLED);
+      cv::putText(frame, classString,
+                  cv::Point(track->get_last_observation()[0] + 5,
+                            track->get_last_observation()[1] - 10),
+                  cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
+    }
+    float scale = 1;
+    cv::resize(frame, frame, cv::Size(frame.cols * scale, frame.rows * scale));
+    cv::imshow("img", frame);
+    cv::waitKey(1);
+  }
+#endif
   return 0;
 }

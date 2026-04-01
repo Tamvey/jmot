@@ -263,7 +263,16 @@ oc_sort::OcSort::AssociateResults oc_sort::OcSort::associate(
 
 std::vector<std::shared_ptr<oc_sort::KalmanBoxTracker>>
 oc_sort::OcSort::update(const cv::Mat &img) {
+#ifdef PERF_TRACKER
+  pt_.start("tracking");
+#endif
+#ifdef PERF_TRACKER
+  pt_.start("detection");
+#endif
   auto detections = detector_.detect(img, params_.use_sahi);
+#ifdef PERF_TRACKER
+  pt_.stop("detection", ",");
+#endif
   frame_count_++;
 
   // sieve by threshold and form detection array
@@ -413,12 +422,19 @@ oc_sort::OcSort::update(const cv::Mat &img) {
       ++it;
     }
   }
-
+#ifdef PERF_TRACKER
+  pt_.stop("tracking", "\n");
+#endif
   return outputs;
 }
 
 oc_sort::OcSort::OcSort(const oc_sort::OcSort::Params &params)
     : params_(params), detector_(params_.engine_path, params_.sahi_params,
-                                 params_.det_thresh, params_.iou_threshold) {}
+                                 params_.det_thresh, params_.iou_threshold) {
+#ifdef PERF_TRACKER
+  pt_ = perf_timer{params_.engine_path};
+  pt_.set_table_name("detection,tracking\n");
+#endif
+}
 
 oc_sort::OcSort::~OcSort() {}

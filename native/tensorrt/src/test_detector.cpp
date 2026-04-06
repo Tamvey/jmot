@@ -4,8 +4,9 @@
 #include <opencv2/imgproc.hpp>
 #include <string>
 #include <vector>
-
+#include <cstdlib>
 #include <opencv2/opencv.hpp>
+#include <chrono>
 
 #include "detector.hpp"
 #include "structs.hpp"
@@ -19,12 +20,12 @@ int main(int argc, char **argv) {
   options.add_options()(
       "i,image", "Image path",
       cxxopts::value<std::string>()->default_value(
-          "/home/matvey/Pictures/imgs/group-people-city-composition.jpg"))(
+          "/home/orin/Pictures/pexels-ericgoverde-4045722.jpg"))(
       "m,model", "Model path",
       cxxopts::value<std::string>()->default_value(
-          "/home/matvey/projects/jmot/build/tensorrt/models/yolo11s.engine"))(
+          "/home/orin/projects/models_orin/dynamic_batches/yolo11s_batch16.engine"))(
       "t,times", "Amount of measures",
-      cxxopts::value<int>()->default_value("10"));
+      cxxopts::value<int>()->default_value("100"));
 
   auto result = options.parse(argc, argv);
 
@@ -34,14 +35,16 @@ int main(int argc, char **argv) {
 
   std::vector<std::string> imageNames;
   imageNames.push_back(result["image"].as<std::string>());
+  std::system("tegrastats --interval 100 > tegrastats.txt &");
 
   for (int j = 0; j < result["times"].as<int>(); j++) {
     for (int i = 0; i < imageNames.size(); ++i) {
       cv::Mat frame = cv::imread(imageNames[i]);
+      auto params = detection::SAHIParams(2000, 1000, 0.2, 0.2);
       //   auto image_slices = detection::utils::slice_image(frame.size(),
       //   params);
-      std::vector<detection::Detection> output = detector.detect(frame, true);
-#ifdef REFLECT
+      std::vector<detection::Detection> output =
+          detector.detect(frame, true);
       int detections = output.size();
 
       for (int i = 0; i < detections; ++i) {
@@ -73,9 +76,10 @@ int main(int argc, char **argv) {
       float scale = 0.2;
       cv::resize(frame, frame,
                  cv::Size(frame.cols * scale, frame.rows * scale));
-      cv::imshow("Inference", frame);
-      cv::waitKey(-1);
-#endif
+    //  cv::imshow("Inference", frame);
+    //  cv::waitKey(-1);
+
     }
   }
+	std::system("tegrastats --stop");
 }

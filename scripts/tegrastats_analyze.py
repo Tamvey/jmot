@@ -100,4 +100,4 @@ def main(root_path):
         print_to_csv(res, model_name, out_csv)
 
 if __name__ == "__main__":
-    main("/home/matvey/diploma/timings/onnx")
+    main("/media/orin/EB6B-E36F/diploma/batch_inf_results")

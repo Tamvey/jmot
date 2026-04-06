@@ -13,11 +13,11 @@ ${trtexec_path} \
         --separateProfileRun \
         --useSpinWait \
         --loadEngine=${model_path} \
-        --exportTimes=/profile/${base_name}_time.json \
-        --exportProfile=/profile/${base_name}_profile.json \
-        --exportLayerInfo=/profile/${base_name}_graph.json \
-        --timingCacheFile=/profile/${base_name}_cache.json \
-        --profilingVerbosity=detailed 
+        --exportTimes=./profile/${base_name}_time.json \
+        --exportProfile=${base_name}_profile.json \
+        --exportLayerInfo=${base_name}_graph.json \
+        --timingCacheFile=${base_name}_cache.json \
+        --profilingVerbosity=detailed
         # --minShapes=input:1x3x640x640 \
         # --optShapes=input:8x3x640x640 \
         # --maxShapes=input:16x3x640x640

@@ -25,6 +25,7 @@ std::vector<Detection> Inference::runInference(const cv::Mat &input) {
   cv::dnn::blobFromImage(modelInput, blob, 1.0 / 255.0, modelShape,
                          cv::Scalar(), true, false);
   net.setInput(blob);
+  net.enableFusion(false);
   pt_.stop("runInference", ",");
 
   pt_.start("runInference");

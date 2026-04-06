@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "NvInferRuntime.h"
-#include "NvInferRuntimeBase.h"
+#include "NvInferRuntimeCommon.h"
 #include "detector.hpp"
 #include "structs.hpp"
 #include "utils.hpp"
@@ -219,7 +219,7 @@ Detector::postprocess(const cv::Size &origSize, const cv::Size &letterboxSize,
   // process batch
   for (int ptr_i = 0; ptr_i < shape0[0]; ptr_i++) {
     futures.push_back(
-        std::async(std::launch::async, [&, ptr_i, image_slices] -> BatchResult {
+        std::async(std::launch::async, [&, ptr_i, image_slices] {
           BatchResult result;
 
           std::vector<detection::BoundingBox> boxes;

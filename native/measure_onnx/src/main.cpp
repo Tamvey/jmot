@@ -1,7 +1,7 @@
 #include <cxxopts.hpp>
 #include <getopt.h>
 #include <vector>
-
+#include <cstdlib>
 #include <opencv2/opencv.hpp>
 
 #include "inference.h"
@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
   std::vector<std::string> imageNames;
   imageNames.push_back(result["image"].as<std::string>());
   // imageNames.push_back(projectBasePath + "/zidane.jpg");
-
+std::system("tegrastats --interval 100 > tegrastats.txt &");
   for (int j = 0; j < result["times"].as<int>(); j++) {
     for (int i = 0; i < imageNames.size(); ++i) {
       cv::Mat frame = cv::imread(imageNames[i]);
@@ -72,4 +72,5 @@ int main(int argc, char **argv) {
 #endif
     }
   }
+std::system("tegrastats --stop");
 }

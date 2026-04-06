@@ -12,6 +12,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O2")
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -MMD -Wall -Wextra -Winit-self")
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
+include_directories("/usr/local/cuda-11.4/targets/aarch64-linux/include" "/usr/include/aarch64-linux-gnu")
+link_directories("/usr/local/cuda/lib64")
 set(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda")
 
 find_package(CUDA REQUIRED)
@@ -62,7 +64,7 @@ endif()
 # build library
 add_library(${PROJECT_NAME} SHARED ${PROJECT_SOURCES})
 target_link_directories(${PROJECT_NAME} PRIVATE ${TENSORRT_LIB_DIR})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} cudart nvinfer yaml-cpp::yaml-cpp)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} cudart nvinfer yaml-cpp)
 
 if(PERF_TRACKER)
     target_compile_definitions(${PROJECT_NAME} PRIVATE PERF_TRACKER=ON)

@@ -94,7 +94,7 @@ int main() {
     }
   }
 #else
-  cv::VideoCapture vc("/home/matvey/Videos/test_videos/plane_3x.mp4");
+  cv::VideoCapture vc("/home/orin/Videos/6034478_Car_Road_3840x2160.mp4");
   std::cout << cv::getBuildInformation() << std::endl;
   std::printf("backend_name: %d\n", vc.getBackendName());
   std::printf("is_opened: %d\n", vc.isOpened());

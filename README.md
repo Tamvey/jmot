@@ -1,13 +1,21 @@
 # Сравнительный анализ алгоритмов многообъектного отслеживания
 
 <p align="left" width="100%">
-    <img width="33%" src="./examples/oc-sort_yolo11s_1.gif">
-    <img width="33%" src="./examples/oc-sort_yolo11s_4.gif">
-    <img width="33%" src="./examples/oc-sort_yolo11s_16.gif">
+    <img width="33%" src="./examples/standard/batch_1.gif">
+    <img width="33%" src="./examples/standard/batch_4.gif">
+    <img width="33%" src="./examples/standard/batch_16.gif">
 </p>
-
 <p align="center" width="100%">
     Пример работы OC-SORT + YOLO11s на видеоряде с разрешением 3840x2160 для батчей: 1, 4, 16
+</p>
+
+<p align="left" width="100%">
+    <img width="33%" src="./examples/visdrone/batch_1.gif">
+    <img width="33%" src="./examples/visdrone/batch_4.gif">
+    <img width="33%" src="./examples/visdrone/batch_16.gif">
+</p>
+<p align="center" width="100%">
+    Пример работы OC-SORT + YOLO11s(VisDrone) на видеоряде с разрешением 3840x2160 для батчей: 1, 4, 16
 </p>
 
 ## Работа в виртуальном окружении

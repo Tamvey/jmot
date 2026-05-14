@@ -110,4 +110,15 @@ struct SAHIParams {
   float overlap_width_ratio_{0.2};
 };
 
+struct NetworkParams {
+  std::string rtsp_src;
+};
+
+struct ModeParams {
+  bool jetson;
+  int width_res;
+  int height_res;
+  int framerate;
+};
+
 } // namespace detection

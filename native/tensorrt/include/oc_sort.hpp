@@ -49,6 +49,8 @@ public:
     std::string engine_path = "./yolo11s.engine";
     bool use_sahi;
     detection::SAHIParams sahi_params;
+    detection::NetworkParams network_params;
+    detection::ModeParams mode_params;
   };
 
   struct AssociateResults {

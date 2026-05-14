@@ -30,6 +30,7 @@ public:
         std::chrono::high_resolution_clock::now() - tps.find(fname)->second;
     out_ << std::chrono::duration_cast<std::chrono::milliseconds>(spent).count()
          << postfix;
+    out_.flush();
   }
 
 private:

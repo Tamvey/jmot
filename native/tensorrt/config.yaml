@@ -20,3 +20,12 @@ detector:
     patch_height: 640
     overlap_ratio: 0.2
     conf_threshold: 0.2
+  
+network:
+  rtsp_src: "rtsp://localhost:8554/test_1"
+
+mode:
+  jetson: false 
+  width_res: 1920
+  height_res: 1080
+  framerate: 20

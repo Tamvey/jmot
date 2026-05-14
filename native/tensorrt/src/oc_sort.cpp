@@ -45,6 +45,19 @@ oc_sort::OcSort::fromYaml(const std::string &yaml_path) {
       }
     }
 
+    if (config["mode"]) {
+      auto network = config["mode"];
+      params.mode_params.width_res = network["width_res"].as<int>(1920);
+      params.mode_params.height_res = network["height_res"].as<int>(1080);
+      params.mode_params.framerate = network["framerate"].as<int>(20);
+      params.mode_params.jetson = network["jetson"].as<bool>(false);
+    }
+
+    if (config["network"]) {
+      auto network = config["network"];
+      params.network_params.rtsp_src = network["rtsp_src"].as<std::string>("");
+    }
+
     return params;
 
   } catch (const YAML::Exception &e) {
@@ -438,3 +451,7 @@ oc_sort::OcSort::OcSort(const oc_sort::OcSort::Params &params)
 }
 
 oc_sort::OcSort::~OcSort() {}
+
+const oc_sort::OcSort::Params &oc_sort::OcSort::params() const {
+  return this->params_;
+};

@@ -18,6 +18,10 @@ find_package(CUDA REQUIRED)
 find_package (Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GST REQUIRED gstreamer-1.0 gstreamer-app-1.0 gstreamer-video-1.0)
+pkg_check_modules(GST_RTP REQUIRED gstreamer-rtp-1.0)
+pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 # find_package(CudaToolkit REQUIRED)
 
 # set includes and sources
@@ -28,6 +32,8 @@ include_directories(
     ${CMAKE_CURRENT_LIST_DIR}/include 
     ${CMAKE_CURRENT_LIST_DIR}/../include
     ${TENSORRT_INCLUDE_DIR}
+    ${GLIB2_INCLUDE_DIRS}
+    ${GST_INCLUDE_DIRS}
 )
 
 link_directories(/usr/local/cuda/lib64 ~/builds/TensorRT-10.14.1.48/lib)
@@ -61,8 +67,7 @@ endif()
 
 # build library
 add_library(${PROJECT_NAME} SHARED ${PROJECT_SOURCES})
-target_link_directories(${PROJECT_NAME} PRIVATE ${TENSORRT_LIB_DIR})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} cudart nvinfer yaml-cpp::yaml-cpp)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} ${TENSORRT_LIB_DIR} cudart nvinfer yaml-cpp)
 
 if(PERF_TRACKER)
     target_compile_definitions(${PROJECT_NAME} PRIVATE PERF_TRACKER=ON)
@@ -87,6 +92,14 @@ if (BUILD_TEST_PROGRAM)
   if(KITTI_RESULTS)
       target_compile_definitions(test_tracker PRIVATE KITTI_RESULTS=ON)
   endif()
+
+  # rtsp server
+  add_executable(rtsp_server ${CMAKE_CURRENT_LIST_DIR}/src/rtsp_server.cpp)
+  target_link_libraries(rtsp_server PRIVATE ${GST_LIBRARIES} ${GLIB2_LIBRARIES} gstrtspserver-1.0)
+
+  # rtsp_client
+  add_executable(rtsp_client ${CMAKE_CURRENT_LIST_DIR}/src/rtsp_client.cpp)
+  target_link_libraries(rtsp_client PRIVATE ${PROJECT_NAME} ${GST_LIBRARIES} ${GLIB2_LIBRARIES})
 endif()
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/config.yaml DESTINATION ${CMAKE_BINARY_DIR}/tensorrt)

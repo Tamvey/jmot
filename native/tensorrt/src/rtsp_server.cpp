@@ -52,8 +52,8 @@ int main(int argc, char *argv[]) {
                             path.c_str());
     } else {
       str = g_strdup_printf(""
-                            "v4l2src device=\"%s\" ! videoconvert ! "
-                            "x264enc ! h264parse ! rtph264pay name=pay0"
+                            "v4l2src device=\"%s\" ! nvvidconv ! "
+                            "nvv4l2h264enc ! h264parse ! rtph264pay name=pay0"
                             "",
                             path.c_str());
     }

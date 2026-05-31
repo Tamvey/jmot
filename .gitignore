@@ -5,3 +5,5 @@ build/*
 
 scripts/runs/*
 scripts/models/*
+
+opencv*

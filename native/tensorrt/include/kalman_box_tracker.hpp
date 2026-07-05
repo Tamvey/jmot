@@ -173,6 +173,7 @@ void KalmanBoxTracker::update(
         auto dt = delta_t - i;
         if (observations.find(age - dt) != observations.end()) {
           previous_box = observations[age - dt];
+          break;
         }
       }
       if (!previous_box.has_value())

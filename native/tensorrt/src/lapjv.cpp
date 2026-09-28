@@ -1,3 +1,7 @@
+// Based on https://github.com/Vertical-Beach/ByteTrack-cpp (MIT License)
+// Copyright (c) 2022 Vertical Beach (lp6m, medalotte)
+// Copyright (c) 2021 Yifu Zhang
+
 #include "lapjv.h"
 
 #include <cstddef>

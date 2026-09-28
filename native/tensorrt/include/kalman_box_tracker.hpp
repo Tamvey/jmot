@@ -83,7 +83,7 @@ public:
   }
   std::optional<Eigen::Vector2f> get_velocity() const { return velocity; }
 
-  std::unordered_map<int, Eigen::Vector<float, MEAS_DIM + 1>>
+  const std::unordered_map<int, Eigen::Vector<float, MEAS_DIM + 1>> &
   get_observations() const {
     return observations;
   }

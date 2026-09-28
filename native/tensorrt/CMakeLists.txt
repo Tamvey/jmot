@@ -36,7 +36,7 @@ include_directories(
     ${GST_INCLUDE_DIRS}
 )
 
-link_directories(/usr/local/cuda/lib64 ~/builds/TensorRT-10.14.1.48/lib)
+link_directories(/usr/local/cuda/lib64 ${TENSORRT_LIB_DIR})
 
 set(PROJECT_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/detector.cpp
@@ -67,7 +67,7 @@ endif()
 
 # build library
 add_library(${PROJECT_NAME} SHARED ${PROJECT_SOURCES})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} ${TENSORRT_LIB_DIR} cudart nvinfer yaml-cpp)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} cudart nvinfer yaml-cpp)
 
 if(PERF_TRACKER)
     target_compile_definitions(${PROJECT_NAME} PRIVATE PERF_TRACKER=ON)

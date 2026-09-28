@@ -38,10 +38,10 @@ oc_sort::OcSort::fromYaml(const std::string &yaml_path) {
       params.use_sahi = detector["use_sahi"].as<bool>(false);
       if (detector["sahi"]) {
         auto sahi = detector["sahi"];
+        auto overlap_ratio = sahi["overlap_ratio"].as<float>(0.2f);
         params.sahi_params = detection::SAHIParams{
-            sahi["patch_width"].as<int>(640), sahi["patch_height"].as<int>(640),
-            sahi["overlap_ratio"].as<float>(0.2f),
-            sahi["conf_threshold"].as<float>(0.2f)};
+            sahi["patch_height"].as<int>(640), sahi["patch_width"].as<int>(640),
+            overlap_ratio, overlap_ratio};
       }
     }
 
@@ -82,22 +82,21 @@ std::vector<std::vector<float>> eigen_to_vector2d(const Eigen::MatrixXf &mat) {
 }
 
 Eigen::Vector<float, oc_sort::MEAS_DIM + 1> oc_sort::k_previous_obs(
-    std::unordered_map<int, Eigen::Vector<float, MEAS_DIM + 1>> observations,
+    const std::unordered_map<int, Eigen::Vector<float, MEAS_DIM + 1>>
+        &observations,
     int age, int delta_t) {
   if (observations.empty())
     return Eigen::Vector<float, MEAS_DIM + 1>::Zero();
   for (int i = 0; i < delta_t; i++) {
     auto dt = delta_t - i;
-    if (observations.find(age - dt) != observations.end())
-      return observations[age - dt];
+    auto it = observations.find(age - dt);
+    if (it != observations.end())
+      return it->second;
   }
-  auto max_age = 0;
-  std::for_each(
+  auto latest = std::max_element(
       observations.begin(), observations.end(),
-      [&max_age](std::pair<int, Eigen::Vector<float, MEAS_DIM + 1>> pair) {
-        max_age = std::max(max_age, pair.first);
-      });
-  return observations[max_age];
+      [](const auto &a, const auto &b) { return a.first < b.first; });
+  return latest->second;
 }
 
 Eigen::MatrixXf oc_sort::iou_batch(const Eigen::MatrixXf &dets,

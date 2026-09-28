@@ -25,9 +25,10 @@ Eigen::MatrixXf iou_batch(const Eigen::MatrixXf &dets,
 DirectionResults speed_direction_batch(const Eigen::MatrixXf &dets,
                                        const Eigen::MatrixXf &trks);
 
-Eigen::Vector<float, MEAS_DIM + 1> k_previous_obs(
-    std::unordered_map<int, Eigen::Vector<float, MEAS_DIM + 1>> observations,
-    int age, int delta_t);
+Eigen::Vector<float, MEAS_DIM + 1>
+k_previous_obs(const std::unordered_map<int, Eigen::Vector<float, MEAS_DIM + 1>>
+                   &observations,
+               int age, int delta_t);
 
 class OcSort {
 public:

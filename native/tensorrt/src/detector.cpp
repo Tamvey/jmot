@@ -116,7 +116,7 @@ std::vector<detection::Detection> Detector::detect(const cv::Mat &image,
   }
 #ifdef PERF_DET
   pt_.start("detect");
-#endif #endif
+#endif
 
   if (tensorrt_base_->inference()) {
     logger_->log(Logger::Severity::kERROR, "Inference failed");

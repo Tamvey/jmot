@@ -45,6 +45,7 @@ static std::string get_message_error(StatusCode statusCode) {
   case (ERROR_CUDA_MEMORY_OPERATION):
     return "Error in cuda memory operation.";
   }
+  return "Unknown error.";
 }
 
 struct IOTensor {
